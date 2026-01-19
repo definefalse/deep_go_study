@@ -1,6 +1,8 @@
 package main
 
 import (
+	"unsafe"
+
 	"github.com/stretchr/testify/assert"
 
 	"testing"
@@ -9,26 +11,19 @@ import (
 // go test -v homework_test.go
 
 func ToLittleEndian[T uint16 | uint32 | uint64](number T) T {
-	switch v := any(number).(type) {
-	case uint16:
-		return T(((v >> 8) & 0xFF) | ((v & 0xFF) << 8))
-	case uint32:
-		return T(((v >> 24) & 0xFF) |
-			((v >> 8) & 0xFF00) |
-			((v << 8) & 0xFF0000) |
-			((v << 24) & 0xFF000000))
-	case uint64:
-		return T(((v >> 56) & 0xFF) |
-			((v >> 40) & 0xFF00) |
-			((v >> 24) & 0xFF0000) |
-			((v >> 8) & 0xFF000000) |
-			((v << 8) & 0xFF00000000) |
-			((v << 24) & 0xFF0000000000) |
-			((v << 40) & 0xFF000000000000) |
-			((v << 56) & 0xFF00000000000000))
-	default:
-		return number
+	size := int(unsafe.Sizeof(number))
+
+	var result T
+	ptr := unsafe.Pointer(&number)
+	resultPtr := unsafe.Pointer(&result)
+
+	for i := 0; i < size; i++ {
+		srcByte := *(*byte)(unsafe.Pointer(uintptr(ptr) + uintptr(size-i-1)))
+		dstByte := (*byte)(unsafe.Pointer(uintptr(resultPtr) + uintptr(i)))
+		*dstByte = srcByte
 	}
+
+	return result
 }
 
 func TestConversionUint32(t *testing.T) {
