@@ -38,7 +38,7 @@ func (b *COWBuffer) Close() {
 	clone := make([]byte, len(b.data))
 	b.data = clone
 	b.refs = new(int)
-	*b.refs = 0
+	*b.refs = 1
 }
 
 func (b *COWBuffer) Update(index int, value byte) bool {
@@ -54,6 +54,8 @@ func (b *COWBuffer) Update(index int, value byte) bool {
 	copy(clone, b.data)
 	clone[index] = value
 	b.data = clone
+	b.refs = new(int)
+	*b.refs = 1
 	return true
 }
 
@@ -83,6 +85,15 @@ func TestCOWBuffer(t *testing.T) {
 	assert.True(t, (*byte)(unsafe.StringData(copy1.String())) == unsafe.StringData(copy2.String()))
 
 	assert.True(t, buffer.Update(0, 'g'))
+	assert.Equal(t, *buffer.refs, 1)
+	assert.Equal(t, *copy1.refs, 2)
+	assert.Equal(t, *copy2.refs, 2)
+	assert.False(t, (*byte)(unsafe.StringData(buffer.String())) == unsafe.StringData(copy1.String()))
+	assert.True(t, (*byte)(unsafe.StringData(copy1.String())) == unsafe.StringData(copy2.String()))
+	copy3 := buffer.Clone()
+	assert.True(t, (*byte)(unsafe.StringData(buffer.String())) == unsafe.StringData(copy3.String()))
+	assert.Equal(t, *buffer.refs, 2)
+	assert.Equal(t, *copy3.refs, 2)
 	assert.False(t, buffer.Update(-1, 'g'))
 	assert.False(t, buffer.Update(4, 'g'))
 
