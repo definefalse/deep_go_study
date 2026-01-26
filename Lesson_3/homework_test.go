@@ -35,8 +35,6 @@ func (b *COWBuffer) Close() {
 		return
 	}
 	*b.refs--
-	clone := make([]byte, len(b.data))
-	b.data = clone
 	b.refs = new(int)
 	*b.refs = 1
 }
@@ -53,9 +51,7 @@ func (b *COWBuffer) Update(index int, value byte) bool {
 	clone := make([]byte, len(b.data))
 	copy(clone, b.data)
 	clone[index] = value
-	b.data = clone
-	b.refs = new(int)
-	*b.refs = 1
+	*b = NewCOWBuffer(clone)
 	return true
 }
 
