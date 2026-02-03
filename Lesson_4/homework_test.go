@@ -27,87 +27,78 @@ func NewOrderedMap() OrderedMap {
 }
 
 func (m *OrderedMap) Insert(key, value int) {
-	if m.root == nil {
-		m.root = &Node{key, value, nil, nil}
+	var inserted bool
+	m.root, inserted = insertRecursive(m.root, key, value)
+	if inserted {
 		m.size++
-		return
-	}
-
-	cur := m.root
-	for {
-		if key < cur.key {
-			if cur.left == nil {
-				cur.left = &Node{key, value, nil, nil}
-				m.size++
-				return
-			}
-			cur = cur.left
-			continue
-		}
-		if key > cur.key {
-			if cur.right == nil {
-				cur.right = &Node{key, value, nil, nil}
-				m.size++
-				return
-			}
-			cur = cur.right
-			continue
-		}
-		cur.value = value
-		return
 	}
 }
 
+func insertRecursive(n *Node, key, value int) (*Node, bool) {
+	if n == nil {
+		return &Node{key: key, value: value}, true
+	}
+
+	if key < n.key {
+		var inserted bool
+		n.left, inserted = insertRecursive(n.left, key, value)
+		return n, inserted
+	}
+
+	if key > n.key {
+		var inserted bool
+		n.right, inserted = insertRecursive(n.right, key, value)
+		return n, inserted
+	}
+
+	n.value = value
+	return n, false
+}
+
 func (m *OrderedMap) Erase(key int) {
-	var parent *Node
-	cur := m.root
+	var erased bool
+	m.root, erased = erase(m.root, key)
+	if erased {
+		m.size--
+	}
+}
 
-	for cur != nil && cur.key != key {
-		parent = cur
-		if key < cur.key {
-			cur = cur.left
-		} else {
-			cur = cur.right
-		}
+func erase(n *Node, key int) (*Node, bool) {
+	if n == nil {
+		return nil, false
 	}
 
-	if cur == nil {
-		fmt.Printf("Key %v not found\n", key)
-		return
+	if key < n.key {
+		var erased bool
+		n.left, erased = erase(n.left, key)
+		return n, erased
 	}
 
-	if cur.left != nil && cur.right != nil {
-		parentChild := cur
-		child := cur.right
-
-		for child.left != nil {
-			parentChild = child
-			child = child.left
-		}
-
-		cur.key = child.key
-		cur.value = child.value
-
-		parent = parentChild
-		cur = child
+	if key > n.key {
+		var erased bool
+		n.right, erased = erase(n.right, key)
+		return n, erased
 	}
 
-	var child *Node
-	if cur.left != nil {
-		child = cur.left
-	} else {
-		child = cur.right
+	if n.left == nil {
+		return n.right, true
+	}
+	if n.right == nil {
+		return n.left, true
 	}
 
-	if parent == nil {
-		m.root = child
-	} else if parent.left == cur {
-		parent.left = child
-	} else {
-		parent.right = child
-	}
+	successor := minNode(n.right)
+	n.key = successor.key
+	n.value = successor.value
+	n.right, _ = erase(n.right, successor.key)
+	return n, true
+}
 
-	m.size--
+func minNode(n *Node) *Node {
+	for n.left != nil {
+		n = n.left
+	}
+	return n
 }
 
 func (m *OrderedMap) Contains(key int) bool {
@@ -159,6 +150,11 @@ func TestOrderedMap(t *testing.T) {
 	data.Insert(4, 4)
 	data.Insert(12, 12)
 	data.Insert(14, 14)
+
+	assert.Equal(t, 7, data.Size())
+
+	data.Insert(14, 10)
+	assert.Equal(t, 7, data.Size())
 
 	assert.Equal(t, 7, data.Size())
 	assert.True(t, data.Contains(4))
